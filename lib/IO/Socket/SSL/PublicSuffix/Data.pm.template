@@ -3,6 +3,8 @@ use strict;
 use warnings;
 package IO::Socket::SSL::PublicSuffix::[% module %];
 
+# This file was built [% build_time_string %]
+
 =head1 NAME
 
 IO::Socket::SSL::PublicSuffix::[% module %] - provide access to Mozilla's list of effective TLD names
@@ -19,10 +21,12 @@ This module provides the public suffix list as a tree.
 
 Returns the data tree used to populate public suffix.
 
+=back
+
 =cut
 
 sub get_tree {
-   return ([% tree_code %]);
+   return [% tree_code %];
 }
 
 1;

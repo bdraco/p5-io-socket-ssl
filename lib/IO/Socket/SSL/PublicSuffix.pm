@@ -39,12 +39,17 @@ IO::Socket::SSL::PublicSuffix - provide access to Mozilla's list of effective TL
     # $tld  -> [qw(co uk)]
     my ($rest,$tld) = $ps->public_suffix([qw(whatever host co uk)]);
 
- ----
+=head1 UPDATING
 
-    # To update this file with the current list:
+You may find that your need to update the public suffix list without updating this module.
+
+To update this file with the current list:
+  
     perl -MIO::Socket::SSL::PublicSuffix -e 'IO::Socket::SSL::PublicSuffix::update_self_from_url()'
-
-
+ 
+This will create a IO::Socket::SSL::PublicSuffix::Latest which will be preferred
+over the IO::Socket::SSL::PublicSuffix::BuiltIn module that ships with
+IO::Socket::SSL::PublicSuffix
 
 =head1 DESCRIPTION
 
@@ -355,9 +360,11 @@ sub update_self_from_url {
       if !$resp->is_success;
     my $content   = $resp->decoded_content;
     my $tree_hr   = build_tree_from_string_ref( \$content );
-    my $tree_code = Data::Dumper->new( [$tree_hr], ['tree'] );#->Purity(1)->Terse(1)->Deepcopy(1);
-    $template_code =~ s{[% tree_code %]}{$tree_code}g;
-    $template_code =~ s{[% module %]}{$module}g;
+    my $tree_code = Data::Dumper->new( [$tree_hr], ['tree'] )->Quotekeys(0)->Purity(1)->Indent(0)->Terse(1)->Deepcopy(1)->Dump();
+    my $build_time_string = gmtime() . ' UTC';
+    $template_code =~ s{\Q[% tree_code %]\E}{$tree_code}g;
+    $template_code =~ s{\Q[% module %]\E}{$module}g;
+    $template_code =~ s{\Q[% build_time_string %]\E}{$build_time_string}g;
     print {$build_fh} $template_code;
     close($build_fh) or die "close($dst_build_file): $!";
     rename( $dst_build_file, $dst ) or die "Failed to install $dst from $dst_build_file: $!";
