@@ -133,10 +133,10 @@ BEGIN {
 	*can_idn = sub { 1 };
     } elsif ( eval { require Net::LibIDN; require Encode } ) {
 	# Net::LibIDN does not use utf-8 flag and expects raw data
-	*idn_to_ascii   = sub { 
+	*idn_to_ascii   = sub {
 	    Net::LibIDN::idn_to_ascii(Encode::encode('utf-8',$_[0]),'utf-8');
 	},
-	*idn_to_unicode = sub { 
+	*idn_to_unicode = sub {
 	    Encode::decode('utf-8',Net::LibIDN::idn_to_unicode($_[0],'utf-8'));
 	},
 	*can_idn = sub { 1 };
@@ -163,10 +163,10 @@ sub from_tree {
     my($class,$tree_hr,%args) =@_;
     my $min_suffix = delete $args{min_suffix};
     $min_suffix = 1 if ! defined $min_suffix;
-    %args and die "unknown args: ".join(" ",sort keys %args)
-return bless { 
-	tree => $tree_hr, 
-	min_suffix => $min_suffix 
+    %args and die "unknown args: ".join(" ",sort keys %args);
+return bless {
+	tree => $tree_hr,
+	min_suffix => $min_suffix
     },$class;
 }
 
@@ -189,28 +189,34 @@ sub from_file {
     } elsif ( ! open($fh,'<',$file)) {
 	die "failed to open $file: $!";
     }
-    my $tree_hr = build_tree_from_fh($fh);
-    return bless { 
-	tree => $tree_hr, 
-	min_suffix => $min_suffix 
+    my $content;
+    {
+        local $/;
+        $content = readline($fh);
+        defined $content or die "Failed to read public suffix data: $!";
+    }
+    my $tree_hr = build_tree_from_string_ref( \$content );
+    return bless {
+	tree => $tree_hr,
+	min_suffix => $min_suffix
     },$class;
 }
 
-sub build_tree_from_fh {    
+sub build_tree_from_string_ref {
+    my ($content_sr) = @_;
     my %tree;
-    local $/ = "\n";
-    while ( my $line = <$fh>) {
-	$line =~s{//.*}{};
-	$line =~s{\s+$}{};
-	$line eq '' and next;
-	my $p = \%tree;
-	$line = idn_to_ascii($line) if $line !~m{\A[\x00-\x7f]*\Z};
-	my $not = $line =~s{^!}{};
-	my @path = split(m{\.},$line);
-	for(reverse @path) {
-	    $p = $p->{$_} ||= {}
-	}
-	$p->{'\0'} = $not ? -1:1;
+    foreach my $line (split(m{\n}, $$content_sr)){
+        $line =~ s{//.*}{};
+        $line =~ s{\s+$}{};
+        $line eq '' and next;
+        my $p = \%tree;
+        $line = idn_to_ascii($line) if $line !~ m{\A[\x00-\x7f]*\Z};
+        my $not  = $line =~ s{^!}{};
+        my @path = split( m{\.}, $line );
+        for ( reverse @path ) {
+            $p = $p->{$_} ||= {};
+        }
+        $p->{'\0'} = $not ? -1 : 1;
     }
     return \%tree;
 }
@@ -307,7 +313,7 @@ sub public_suffix {
     my $tree_hr;
     sub _latest_tree {
 	if ( ! defined $tree_hr ) {
-      eval { require IO::Socket::SSL::PublicSuffix::Latest; }
+      eval { require IO::Socket::SSL::PublicSuffix::Latest; };
       if (!$@) {
         $tree_hr = IO::Socket::SSL::PublicSuffix::Latest::get_tree();
       } else {
@@ -315,53 +321,47 @@ sub public_suffix {
         $tree_hr = IO::Socket::SSL::PublicSuffix::BuiltIn::get_tree();
       }
 	}
-	return $data;
+	return $tree_hr;
     }
 }
 
 sub update_self_from_url {
-    my $url = shift || URL();
-    my $dst = __FILE__;
-    -w $dst or die "cannot write $dst";
-    open( my $fh,'<',$dst ) or die "open $dst: $!";
-    my $code = '';
-    local $/ = "\n";
-    while (<$fh>) {
-	$code .= $_;
-	m{<<\'END_BUILTIN_DATA\'} and last;
-    }
-    my $tail;
-    while (<$fh>) {
-	m{\AEND_BUILTIN_DATA\r?\n} or next;
-	$tail = $_;
-	last;
-    }
-    $tail .= do { local $/; <$fh> };
-    close($fh);
-
+    my $url    = shift || URL();
+    my $module = shift || 'Latest';
+    require File::Spec;
+    require Data::Dumper;
     require LWP::UserAgent;
-    my $resp = LWP::UserAgent->new->get($url)
-	or die "no response from $url";
-    die "no success url=$url code=".$resp->code." ".$resp->message 
-	if ! $resp->is_success;
-    my $content = $resp->decoded_content;
-    while ( $content =~m{(.*\n)}g ) {
-	my $line = $1;
-	if ( $line =~m{\S} && $line !~m{\A\s*//} ) {
-	    $line =~s{//.*}{};
-	    $line =~s{\s+$}{};
-	    $line eq '' and next;
-	    if ( $line !~m{\A[\x00-\x7f]+\Z} ) {
-		$line = idn_to_ascii($line);
-	    }
-	    $code .= "$line\n";
-	} else {
-	    $code .= "$line";
-	}
-    }
 
-    open( $fh,'>:utf8',$dst ) or die "open $dst: $!";
-    print $fh $code.$tail;
+    # We have a template file in PublicSuffix that we use to build
+    # the .pm file
+    my ( $volume, $directory, $file ) = File::Spec->splitpath(__FILE__);
+    my $target_directory = "$directory/PublicSuffix";
+
+    my $dst            = "$target_directory/$module.pm";
+    my $dst_build_file = "$dst.build";
+    -w $target_directory or -w $dst or die "cannot write $dst: $!";
+    my $template_file = "$target_directory/Data.pm.template";
+    my $template_code;
+    open( my $template_fh, '<', $template_file ) or die "open($template_file): $!";
+    {
+        local $/;
+        $template_code = readline($template_fh);
+        defined $template_code or die "Failed to read template: $template_file: $!";
+    }
+    open( my $build_fh, '>:utf8', $dst_build_file ) or die "open($dst_build_file): $!";
+    my $resp = LWP::UserAgent->new->get($url)
+      or die "no response from $url";
+    die "no success url=$url code=" . $resp->code . " " . $resp->message
+      if !$resp->is_success;
+    my $content   = $resp->decoded_content;
+    my $tree_hr   = build_tree_from_string_ref( \$content );
+    my $tree_code = Data::Dumper->new( [$tree_hr], ['tree'] );#->Purity(1)->Terse(1)->Deepcopy(1);
+    $template_code =~ s{[% tree_code %]}{$tree_code}g;
+    $template_code =~ s{[% module %]}{$module}g;
+    print {$build_fh} $template_code;
+    close($build_fh) or die "close($dst_build_file): $!";
+    rename( $dst_build_file, $dst ) or die "Failed to install $dst from $dst_build_file: $!";
+    return;
 }
 
 1;

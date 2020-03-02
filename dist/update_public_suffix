@@ -1,0 +1,19 @@
+#!perl
+
+use strict;
+use warnings;
+
+use FindBin ();
+use lib "$FindBin::Bin/../lib";
+
+use IO::Socket::SSL::PublicSuffix ();
+
+exit __PACKAGE__->run(@ARGV) unless caller();
+
+sub run {
+    my ( $self, $url ) = @_;
+
+    IO::Socket::SSL::PublicSuffix::update_self_from_url($url, 'BuiltIn');
+
+    return 0;
+}
