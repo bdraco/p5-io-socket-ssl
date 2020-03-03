@@ -369,6 +369,7 @@ sub update_self_from_url {
     my $build_time_string = gmtime() . ' UTC';
     $template_code =~ s{\Q[% tree_code %]\E}{$tree_code}g;
     $template_code =~ s{\Q[% module %]\E}{$module}g;
+    $template_code =~ s{\Q[% url %]\E}{$url}g;
     $template_code =~ s{\Q[% build_time_string %]\E}{$build_time_string}g;
     print {$build_fh} $template_code;
     close($build_fh) or die "close($dst_build_file): $!";

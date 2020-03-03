@@ -3,7 +3,7 @@ use strict;
 use warnings;
 package IO::Socket::SSL::PublicSuffix::[% module %];
 
-# This file was built [% build_time_string %]
+# This file was built @ [% build_time_string %] from [% url %]
 
 =head1 NAME
 
