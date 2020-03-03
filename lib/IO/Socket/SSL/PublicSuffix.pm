@@ -359,6 +359,11 @@ sub update_self_from_url {
     die "no success url=$url code=" . $resp->code . " " . $resp->message
       if !$resp->is_success;
     my $content   = $resp->decoded_content;
+    # We want to ignore all the content after ===END ICANN DOMAINS
+    # as this contains domains we do not want to include
+    # see RT#99702
+    $content =~s{^// ===END ICANN DOMAINS.*}{}ms
+      or die "cannot find END ICANN DOMAINS";
     my $tree_hr   = build_tree_from_string_ref( \$content );
     my $tree_code = Data::Dumper->new( [$tree_hr], ['tree'] )->Quotekeys(0)->Purity(1)->Indent(0)->Terse(1)->Deepcopy(1)->Dump();
     my $build_time_string = gmtime() . ' UTC';
