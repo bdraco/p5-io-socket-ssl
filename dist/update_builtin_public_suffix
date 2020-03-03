@@ -28,7 +28,7 @@ B<update_builtin_public_suffix> [url]
 
 =head1 DESCRIPTION
 
-This module will create a new IO::Socket::SSL::PublicSuffix::BuiltIn from the 
+This module will create a new IO::Socket::SSL::PublicSuffix::BuiltIn from the
 Public Suffix List at https://publicsuffix.org/list/effective_tld_names.dat
 unless another url is specified.
 
