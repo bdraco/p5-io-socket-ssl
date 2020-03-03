@@ -1,0 +1,33 @@
+#!perl
+
+use strict;
+use warnings;
+
+use IO::Socket::SSL::PublicSuffix ();
+
+exit __PACKAGE__->run(@ARGV) unless caller();
+
+sub run {
+    my ( $self, $url ) = @_;
+
+    IO::Socket::SSL::PublicSuffix::update_self_from_url( $url, 'Latest' );
+
+    return 0;
+}
+
+=head1 NAME
+
+update_latest_public_suffix - Update IO::Socket::SSL's PublicSuffix list
+
+=head1 SYNOPSIS
+
+B<update_latest_public_suffix> [url]
+
+=head1 DESCRIPTION
+
+This module will create a new IO::Socket::SSL::PublicSuffix::Latest from the 
+Public Suffix List at https://publicsuffix.org/list/effective_tld_names.dat
+unless another url is specified.
+
+=cut
+
