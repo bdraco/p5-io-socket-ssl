@@ -137,7 +137,7 @@ WriteMakefile(
     'LICENSE' => 'perl',
     'DISTNAME' => 'IO-Socket-SSL',
     'VERSION_FROM' => 'lib/IO/Socket/SSL.pm',
-    'EXE_FILES' => 'script/update_latest_public_suffix',
+    'EXE_FILES' => ['script/update_latest_public_suffix'],
     'PREREQ_PM' => {
 	'Net::SSLeay' => 1.46,
 	'Scalar::Util' => 0,
