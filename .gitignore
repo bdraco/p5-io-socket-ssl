@@ -7,4 +7,4 @@ Makefile
 Makefile.old
 *.tar.gz
 MYMETA.*
-
+lib/IO/Socket/SSL/PublicSuffix/Latest.pm
