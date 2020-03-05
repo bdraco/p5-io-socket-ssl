@@ -44,13 +44,13 @@ IO::Socket::SSL::PublicSuffix - provide access to Mozilla's list of effective TL
 You may find that your need to update the public suffix list without updating this module.
 
 To update this file with the current list:
- 
+
     Use the included utility: update_latest_public_suffix
- 
+
     OR
-    
+
     perl -MIO::Socket::SSL::PublicSuffix -e 'IO::Socket::SSL::PublicSuffix::update_self_from_url()'
- 
+
 This will create a IO::Socket::SSL::PublicSuffix::Latest which will be preferred
 over the IO::Socket::SSL::PublicSuffix::BuiltIn module that ships with
 IO::Socket::SSL::PublicSuffix
@@ -347,10 +347,10 @@ sub update_self_from_url {
     my ( $volume, $directory, $file ) = File::Spec->splitpath(__FILE__);
     my $target_directory = "$directory/PublicSuffix";
 
-    my $dst            = "$target_directory/$module.pm";
+    my $dst            = File::Spec->catfile( $target_directory, "$module.pm" );
     my $dst_build_file = "$dst.build";
     -w $target_directory or -w $dst or die "cannot write $dst: $!";
-    my $template_file = "$target_directory/Data.pm.template";
+    my $template_file = File::Spec->catfile( $target_directory, "Data.pm.template" );
     my $template_code;
     open( my $template_fh, '<', $template_file ) or die "open($template_file): $!";
     {
@@ -363,14 +363,15 @@ sub update_self_from_url {
       or die "no response from $url";
     die "no success url=$url code=" . $resp->code . " " . $resp->message
       if !$resp->is_success;
-    my $content   = $resp->decoded_content;
+    my $content = $resp->decoded_content;
+
     # We want to ignore all the content after ===END ICANN DOMAINS
     # as this contains domains we do not want to include
     # see RT#99702
-    $content =~s{^// ===END ICANN DOMAINS.*}{}ms
+    $content =~ s{^// ===END ICANN DOMAINS.*}{}ms
       or die "cannot find END ICANN DOMAINS";
-    my $tree_hr   = build_tree_from_string_ref( \$content );
-    my $tree_code = Data::Dumper->new( [$tree_hr], ['tree'] )->Quotekeys(0)->Purity(1)->Indent(0)->Terse(1)->Deepcopy(1)->Dump();
+    my $tree_hr           = build_tree_from_string_ref( \$content );
+    my $tree_code         = Data::Dumper->new( [$tree_hr], ['tree'] )->Quotekeys(0)->Purity(1)->Indent(0)->Terse(1)->Deepcopy(1)->Dump();
     my $build_time_string = gmtime() . ' UTC';
     $template_code =~ s{\Q[% tree_code %]\E}{$tree_code}g;
     $template_code =~ s{\Q[% module %]\E}{$module}g;
